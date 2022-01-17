@@ -1,13 +1,13 @@
-#dcsMisConfigure:
+# dcsMisConfigure:
 
-##A hack of a utility to add preset conditions to already existing DCS mission files.
+## A hack of a utility to add preset conditions to already existing DCS mission files.
 
 Currently ONLY supporting radio presets.
 
-Command:> `python dcsMisConfigure.py -c <ac_type>.cfg <mission name>`
+Command: `python dcsMisConfigure.py -c <ac_type>.cfg <mission name>`
 
 
-The <ac_type>.cfg file has the following categories:<m>
+The `<ac_type>.cfg` file has the following categories:<m>
 
 **[UHF_RADIO]**
 
@@ -39,4 +39,3 @@ NOTES:
 * In the current mission design, some aircraft appears to allow setting of start-up frequencies with similar results to this code. HOWEVER, those parameters are embedded within the mission lua script and does not unwrap into the directory structure ala this tool.
 * When specifying the configuration parameters, the file name of the config file is important as the tool uses that name to create the directory structure (and thus specify the aircraft type). The included example config file shows the naming convention for the A-10C II as is used by DCS.
 * I cannot reiterate enough how fragile this thing is. If you aren't comfortable in mucking through python code and checking the mission structure (before and after this tool is run), I would suggest staying the heck away for now.
-* 
