@@ -29,6 +29,46 @@ UHF_DIR_NAME = 'UHF_RADIO'
 VHF_AM_DIR_NAME = 'VHF_AM_RADIO'
 VHF_FM_DIR_NAME = 'VHF_FM_RADIO'
 
+uhf_freqs = {}
+vhf_am_freqs = {}
+vhf_fm_freqs = {}
+uhf_ac_list = []
+vhf_am_ac_list = []
+vhf_fm_ac_list = []
+
+
+def grabfreqpresets(radio, num_presets, freq_len):
+    """
+    :param radio: Radio type (eg UHF_RADIO)
+    :param num_presets: Number of presets possible
+    :param freq_len: Length of frequency value (# of digits)
+    :return: populated aircraft instance number list, dictionary of preset#:freq
+    """
+    loc_ac_list = []
+    loc_freqs = {}
+
+    if config.has_section(radio):
+        if config.has_option(radio, 'acList'):
+            loc_ac_list = config[radio]['acList'].split(',')
+        else:
+            loc_ac_list = '1'
+    if verbosity > 1:
+        print(f'Found {radio} section')
+        print(f'acList = {loc_ac_list}')
+
+    for i in range(0, num_presets+1):
+        try:
+            loc_freqs[i] = config[radio][f'Pre_{i}'].replace('.', '').ljust(freq_len, '0')
+            if verbosity > 1:
+                print(f'Preset [{i}] -> {loc_freqs[i]}')
+        except KeyError:
+            if verbosity > 2:
+                print(f'Preset [{i}] missing')
+    return loc_ac_list, loc_freqs
+
+
+
+# Parse args
 parser = argparse.ArgumentParser(description='Python script to add startup defaults to DCS mission file.',
                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument('input_filename')
@@ -36,7 +76,7 @@ parser.add_argument('-c', '--config', help='Name of configuration file.', defaul
 parser.add_argument('-v', '--verbosity', help=f'Verbosity level {V_NONE} (silent) to {V_HIGH} (most verbose).',
                     type=int, default=1)
 args = parser.parse_args()
-
+ac_type = args.config[:-4]
 verbosity = args.verbosity
 
 # Parse config file
@@ -49,66 +89,13 @@ except (configparser.MissingSectionHeaderError, configparser.DuplicateOptionErro
     print('*** Exiting due to malformed config file ***')
     exit(-1)
 
-ac_type = args.config[:-4]
-uhf_freqs = {}
-vhf_am_freqs = {}
-vhf_fm_freqs = {}
-
 if verbosity > 0:
     print(f'{sys.argv[0]}: Reading mission defaults from: {args.config}')
 
-# Grab UHF frequencies
-if config.has_section('UHF_RADIO'):
-    if config.has_option('UHF_RADIO', 'acList'):
-        uhf_ac_list = config['UHF_RADIO']['acList'].split(',')
-    else:
-        uhf_ac_list = '1'
-    if verbosity > 1:
-        print('Found UHF Radio section')
-        print(f'acList = {uhf_ac_list}')
-
-    for i in range(0, UHF_NUM_PRESETS+1):
-        try:
-            uhf_freqs[i] = config['UHF_RADIO'][f'Pre_{i}'].replace('.', '').ljust(UHF_FREQ_LEN, '0')
-            if verbosity > 1:
-                print(f'Preset [{i}] -> {uhf_freqs[i]}')
-        except KeyError:
-            if verbosity > 2:
-                print(f'Preset [{i}] missing')
-
-# Grab VHF AM frequencies
-if config.has_section('VHF_AM_RADIO'):
-    if config.has_option('VHF_AM_RADIO', 'acList'):
-        vhf_am_ac_list = config['VHF_AM_RADIO']['acList'].split(',')
-    else:
-        vhf_am_ac_list = '1'
-    if verbosity > 1:
-        print('Found VHF AM Radio section')
-    for i in range(0, VHF_AM_NUM_PRESETS+1):
-        try:
-            vhf_am_freqs[i] = config['VHF_AM_RADIO'][f'Pre_{i}'].replace('.', '').ljust(VHF_AM_FREQ_LEN, '0')
-            if verbosity > 1:
-                print(f'Preset [{i}] -> {vhf_am_freqs[i]}')
-        except KeyError:
-            if verbosity > 2:
-                print(f'Preset [{i}] missing')
-
-# Grab VHF FM frequencies
-if config.has_section('VHF_FM_RADIO'):
-    if config.has_option('VHF_FM_RADIO', 'acList'):
-        vhf_fm_ac_list = config['VHF_FM_RADIO']['acList'].split(',')
-    else:
-        vhf_fm_ac_list = '1'
-    if verbosity > 1:
-        print('Found VHF FM Radio section')
-    for i in range(0, VHF_FM_NUM_PRESETS+1):
-        try:
-            vhf_fm_freqs[i] = config['VHF_FM_RADIO'][f'Pre_{i}'].replace('.', '').ljust(VHF_FM_FREQ_LEN, '0')
-            if verbosity > 1:
-                print(f'Preset [{i}] -> {vhf_fm_freqs[i]}')
-        except KeyError:
-            if verbosity > 2:
-                print(f'Preset [{i}] missing')
+# Get radio frequency presets
+uhf_ac_list, uhf_freqs = grabfreqpresets('UHF_RADIO', UHF_NUM_PRESETS, UHF_FREQ_LEN)
+vhf_am_ac_list, vhf_am_freqs = grabfreqpresets('VHF_AM_RADIO', VHF_AM_NUM_PRESETS, VHF_AM_FREQ_LEN)
+vhf_fm_ac_list, vhf_fm_freqs = grabfreqpresets('VHF_FM_RADIO', VHF_FM_NUM_PRESETS, VHF_FM_FREQ_LEN)
 
 # Create data structure to write lua settings file
 uhf_lua_dict = {'presets': uhf_freqs}
@@ -165,5 +152,5 @@ if verbosity > 0:
 shutil.make_archive(f'{new_name}_mod', 'zip', WORKING_DIRNAME)
 shutil.move(f'{new_name}_mod.zip', f'{new_name}_mod.miz')
 if verbosity > 0:
-    print(f'Removing temp directory : {WORKING_DIRNAME}')
+    print(f'{sys.argv[0]}: Removing temp directory : {WORKING_DIRNAME}')
 shutil.rmtree(WORKING_DIRNAME)
