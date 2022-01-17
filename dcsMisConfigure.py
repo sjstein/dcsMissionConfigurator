@@ -10,7 +10,7 @@ import shutil
 # Note: configFile name should be in the form of (e.g.) 'A-10C_2.cfg'
 # as the program uses the filename to define ac types
 
-config_file = 'missionDefs.cfg'
+config_file = 'A-10C_2.cfg'
 V_NONE = 0
 V_HIGH = 3
 
@@ -44,9 +44,9 @@ try:
     config.read(args.config)
 except (configparser.MissingSectionHeaderError, configparser.DuplicateOptionError, configparser.DuplicateSectionError,
         configparser.ParsingError, configparser.InterpolationError) as err:
-   print (err)
-   print('*** Exiting due to malformed config file ***')
-   exit(-1)
+    print (err)
+    print('*** Exiting due to malformed config file ***')
+    exit(-1)
 
 ac_type = args.config[:-4]
 uhf_freqs = {}
