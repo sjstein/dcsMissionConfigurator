@@ -29,43 +29,67 @@ UHF_DIR_NAME = 'UHF_RADIO'
 VHF_AM_DIR_NAME = 'VHF_AM_RADIO'
 VHF_FM_DIR_NAME = 'VHF_FM_RADIO'
 
+# Front panel default names
+#  <key> is config file parameter name
+#  <val> is lua expanded name as needed within lua mission file
+FRONT_PANEL_SELNS = {'dialMode': 'mode_dial',
+                     'dialSel': 'selection_dial',
+                     'dialChan': 'channel_dial',
+                     'manFreq': 'manual_frequency'}
+
 uhf_freqs = {}
+uhf_presets = {}
 vhf_am_freqs = {}
+vhf_am_presets = {}
 vhf_fm_freqs = {}
+vhf_fm_presets = {}
 uhf_ac_list = []
 vhf_am_ac_list = []
 vhf_fm_ac_list = []
 
 
-def grabfreqpresets(radio, num_presets, freq_len):
+def getpresets(con, radio, num_presets, freq_len):
     """
+    :param con: config file structure
     :param radio: Radio type (eg UHF_RADIO)
     :param num_presets: Number of presets possible
     :param freq_len: Length of frequency value (# of digits)
     :return: populated aircraft instance number list, dictionary of preset#:freq
     """
+
     loc_ac_list = []
     loc_freqs = {}
+    loc_selns = {}
 
-    if config.has_section(radio):
-        if config.has_option(radio, 'acList'):
-            loc_ac_list = config[radio]['acList'].split(',')
+    if con.has_section(radio):
+        if con.has_option(radio, 'acList'):
+            loc_ac_list = con[radio]['acList'].split(',')
         else:
             loc_ac_list = '1'
-    if verbosity > 1:
-        print(f'Found {radio} section')
-        print(f'acList = {loc_ac_list}')
 
-    for i in range(0, num_presets+1):
-        try:
-            loc_freqs[i] = config[radio][f'Pre_{i}'].replace('.', '').ljust(freq_len, '0')
-            if verbosity > 1:
-                print(f'Preset [{i}] -> {loc_freqs[i]}')
-        except KeyError:
-            if verbosity > 2:
-                print(f'Preset [{i}] missing')
-    return loc_ac_list, loc_freqs
+        if verbosity > 1:
+            print(f'Found {radio} section')
+            print(f'acList = {loc_ac_list}')
 
+        for i in range(0, num_presets+1):
+            try:
+                loc_freqs[i] = con[radio][f'Pre_{i}'].replace('.', '').ljust(freq_len, '0')
+                if verbosity > 1:
+                    print(f'Preset [{i}] -> {loc_freqs[i]}')
+            except KeyError:
+                if verbosity > 2:
+                    print(f'Preset [{i}] missing')
+
+        for sel in FRONT_PANEL_SELNS:
+            if con.has_option(radio, sel):
+                if verbosity > 1:
+                    print(f'Found radio panel section {sel} -> {con[radio][sel]}')
+                if '.' in con[radio][sel]:   # Pad any frequency entries
+                    loc_selns[FRONT_PANEL_SELNS[sel]] = con[radio][sel].replace('.', '').ljust(freq_len, '0')
+                else:
+                    loc_selns[FRONT_PANEL_SELNS[sel]] = con[radio][sel]
+
+    return loc_ac_list, loc_freqs, loc_selns
 
 
 # Parse args
@@ -93,14 +117,14 @@ if verbosity > 0:
     print(f'{sys.argv[0]}: Reading mission defaults from: {args.config}')
 
 # Get radio frequency presets
-uhf_ac_list, uhf_freqs = grabfreqpresets('UHF_RADIO', UHF_NUM_PRESETS, UHF_FREQ_LEN)
-vhf_am_ac_list, vhf_am_freqs = grabfreqpresets('VHF_AM_RADIO', VHF_AM_NUM_PRESETS, VHF_AM_FREQ_LEN)
-vhf_fm_ac_list, vhf_fm_freqs = grabfreqpresets('VHF_FM_RADIO', VHF_FM_NUM_PRESETS, VHF_FM_FREQ_LEN)
+uhf_ac_list, uhf_freqs, uhf_presets = getpresets(config, 'UHF_RADIO', UHF_NUM_PRESETS, UHF_FREQ_LEN)
+vhf_am_ac_list, vhf_am_freqs, vhf_am_presets = getpresets(config, 'VHF_AM_RADIO', VHF_AM_NUM_PRESETS, VHF_AM_FREQ_LEN)
+vhf_fm_ac_list, vhf_fm_freqs, vhf_fm_presets = getpresets(config, 'VHF_FM_RADIO', VHF_FM_NUM_PRESETS, VHF_FM_FREQ_LEN)
 
 # Create data structure to write lua settings file
-uhf_lua_dict = {'presets': uhf_freqs}
-vhf_am_lua_dict = {'presets': vhf_am_freqs}
-vhf_fm_lua_dict = {'presets': vhf_fm_freqs}
+uhf_lua_dict = {'presets': uhf_freqs, 'dials': uhf_presets}
+vhf_am_lua_dict = {'presets': vhf_am_freqs, 'dials': vhf_am_presets}
+vhf_fm_lua_dict = {'presets': vhf_fm_freqs, 'dials': vhf_fm_presets}
 
 # Config file parsed, now create new mission.
 if verbosity > 0:
